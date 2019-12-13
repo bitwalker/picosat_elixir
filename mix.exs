@@ -13,6 +13,20 @@ defmodule Picosat.MixProject do
       make_clean: ["clean"],
       elixirc_paths: elixirc_paths(Mix.env()),
       preferred_cli_env: preferred_cli_env(),
+      description: "Bindings for the PicoSAT SAT solver",
+      package: package(),
+    ]
+  end
+
+  defp package do
+    [
+      files: ["lib", "src", "c_src", "priv", "mix.exs", "README.md", "LICENSE.md"],
+      maintainers: ["Paul Schoenfelder"],
+      licenses: ["Apache2.0"],
+      links: %{
+        "GitHub": "https://github.com/bitwalker/picosat_elixir",
+        "Issues": "https://github.com/bitwalker/picosat_elixir/issues",
+      }
     ]
   end
 
@@ -37,6 +51,9 @@ defmodule Picosat.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp preferred_cli_env do
-    [docs: :docs]
+    [
+      docs: :docs,
+      "hex.publish": :docs,
+    ]
   end
 end
