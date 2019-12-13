@@ -20,7 +20,7 @@ defmodule Picosat.MixProject do
 
   defp package do
     [
-      files: ["lib", "src", "c_src", "priv", "mix.exs", "README.md", "LICENSE.md"],
+      files: ["lib", "src", "c_src", "priv", "mix.exs", "Makefile", "README.md", "LICENSE.md"],
       maintainers: ["Paul Schoenfelder"],
       licenses: ["Apache2.0"],
       links: %{
