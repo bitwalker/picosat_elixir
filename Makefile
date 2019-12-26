@@ -9,14 +9,25 @@ C_SRC_OUTPUT = $(CWD)/priv/picosat_nif.so
 
 UNAME_SYS := $(shell uname -s)
 ifeq ($(UNAME_SYS), Darwin)
-	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall
+	CFLAGS ?= -std=c99 -finline-functions -Wall
 	LDFLAGS ?= -flat_namespace -undefined suppress
 else ifeq ($(UNAME_SYS), FreeBSD)
-	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall
+	CFLAGS ?= -std=c99 -finline-functions -Wall
 else ifeq ($(UNAME_SYS), Linux)
-	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall
+	CFLAGS ?= -std=c99 -finline-functions -Wall
 endif
 
+MIX_ENV ?= dev
+# Optimize if MIX_ENV=prod
+ifeq ($(MIX_ENV), prod)
+	CFLAGS += -O3 -DNDEBUG
+# Otherwise, if gcc, then build with full debug symbols
+else ifneq (,$(findstring gcc, $(CC)))
+	CFLAGS += -g3 -ggdb
+# If not gcc, do the same, but more conservatively
+else
+	CFLAGS += -g
+endif
 CFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR)
 LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei
 LDFLAGS += -shared

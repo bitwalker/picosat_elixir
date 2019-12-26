@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright (c) 2006 - 2014, Armin Biere, Johannes Kepler University.
+Copyright (c) 2006 - 2015, Armin Biere, Johannes Kepler University.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to
@@ -27,6 +27,7 @@ IN THE SOFTWARE.
 #include <limits.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #include "picosat.h"
 
@@ -64,6 +65,10 @@ IN THE SOFTWARE.
 #endif
 #endif
 
+#ifdef RCODE
+#include <R.h>
+#endif
+
 #define MINRESTART	100	/* minimum restart interval */
 #define MAXRESTART	1000000 /* maximum restart interval */
 #define RDECIDE		1000	/* interval of random decisions */
@@ -73,13 +78,14 @@ IN THE SOFTWARE.
 #define MAXCILS		10	/* maximal number of unrecycled internals */
 #define FFLIPPED	10000	/* flipped reduce factor */
 #define FFLIPPEDPREC	10000000/* flipped reduce factor precision */
+#define INTERRUPTLIM	1024	/* check interrupt after that many decisions */
 
 #ifndef TRACE
 #define NO_BINARY_CLAUSES	/* store binary clauses more compactly */
 #endif
 
 /* For debugging purposes you may want to define 'LOGGING', which actually
- * can be enforced by using the '--log' option for the configure script.
+ * can be enforced by using './configure.sh --log'.
  */
 #ifdef LOGGING
 #define LOG(code) do { code; } while (0)
@@ -112,7 +118,7 @@ IN THE SOFTWARE.
 
 #define ENLARGE(start,head,end) \
   do { \
-    unsigned old_num = (unsigned)((end) - (start)); \
+    unsigned old_num = (ptrdiff_t)((end) - (start)); \
     size_t new_num = old_num ? (2 * old_num) : 1; \
     unsigned count = (head) - (start); \
     assert ((start) <= (end)); \
@@ -123,27 +129,27 @@ IN THE SOFTWARE.
 
 #define NOTLIT(l) (ps->lits + (1 ^ ((l) - ps->lits)))
 
-#define LIT2IDX(l) ((unsigned)((l) - ps->lits) / 2)
-#define LIT2IMPLS(l) (ps->impls + (unsigned)((l) - ps->lits))
+#define LIT2IDX(l) ((ptrdiff_t)((l) - ps->lits) / 2)
+#define LIT2IMPLS(l) (ps->impls + (ptrdiff_t)((l) - ps->lits))
 #define LIT2INT(l) ((int)(LIT2SGN(l) * LIT2IDX(l)))
-#define LIT2SGN(l) (((unsigned)((l) - ps->lits) & 1) ? -1 : 1)
+#define LIT2SGN(l) (((ptrdiff_t)((l) - ps->lits) & 1) ? -1 : 1)
 #define LIT2VAR(l) (ps->vars + LIT2IDX(l))
-#define LIT2HTPS(l) (ps->htps + (unsigned)((l) - ps->lits))
+#define LIT2HTPS(l) (ps->htps + (ptrdiff_t)((l) - ps->lits))
 #define LIT2JWH(l) (ps->jwh + ((l) - ps->lits))
 
 #ifndef NDSC
-#define LIT2DHTPS(l) (ps->dhtps + (unsigned)((l) - ps->lits))
+#define LIT2DHTPS(l) (ps->dhtps + (ptrdiff_t)((l) - ps->lits))
 #endif
 
 #ifdef NO_BINARY_CLAUSES
-typedef unsigned long Wrd;
+typedef uintptr_t Wrd;
 #define ISLITREASON(C) (1&(Wrd)C)
 #define LIT2REASON(L) \
   (assert (L->val==TRUE), ((Cls*)(1 + (2*(L - ps->lits)))))
 #define REASON2LIT(C) ((Lit*)(ps->lits + ((Wrd)C)/2))
 #endif
 
-#define ENDOFCLS(c) ((void*)((c)->lits + (c)->size))
+#define ENDOFCLS(c) ((void*)((Lit**)(c)->lits + (c)->size))
 
 #define SOC ((ps->oclauses == ps->ohead) ? ps->lclauses : ps->oclauses)
 #define EOC (ps->lhead)
@@ -186,11 +192,18 @@ typedef unsigned long Wrd;
 #define AVERAGE(a,b) ((b) ? (((double)a) / (double)(b)) : 0.0)
 #define PERCENT(a,b) (100.0 * AVERAGE(a,b))
 
+#ifndef RCODE
 #define ABORT(msg) \
   do { \
     fputs ("*** picosat: " msg "\n", stderr); \
     abort (); \
   } while (0)
+#else
+#define ABORT(msg) \
+  do { \
+    Rf_error (msg); \
+  } while (0)
+#endif
 
 #define ABORTIF(cond,msg) \
   do { \
@@ -358,6 +371,13 @@ do { \
 } while (0)
 
 #define WRDSZ (sizeof (long) * 8)
+
+#ifdef RCODE
+#define fprintf(...) do { } while (0)
+#define vfprintf(...) do { } while (0)
+#define fputs(...) do { } while (0)
+#define fputc(...) do { } while (0)
+#endif
 
 typedef unsigned Flt;		/* 32 bit deterministic soft float */
 typedef Flt Act;		/* clause and variable activity */
@@ -697,6 +717,11 @@ struct PicoSAT
   picosat_realloc eresize;
   picosat_free edelete;
 
+  struct {
+    void * state;
+    int (*function) (void *);
+  } interrupt;
+
 #ifdef VISCORES
   FILE * fviscores;
 #endif
@@ -711,7 +736,7 @@ packflt (unsigned m, int e)
   assert (m < FLTMSB);
   assert (FLTMINEXPONENT <= e);
   assert (e <= FLTMAXEXPONENT);
-  res = m | ((e + 128) << 24);
+  res = m | ((unsigned)(e + 128) << 24);
   return res;
 }
 
@@ -765,7 +790,7 @@ addflt (Flt a, Flt b)
 
   assert (ea >= eb);
   delta = ea - eb;
-  mb >>= delta;
+  if (delta < 32) mb >>= delta; else mb = 0;
   if (!mb)
     return a;
 
@@ -839,7 +864,7 @@ ascii2flt (const char *str)
   Flt onetenth = base2flt (26843546, -28);
   Flt res = ZEROFLT, tmp, base;
   const char *p = str;
-  char ch;
+  int ch;
 
   ch = *p++;
 
@@ -1047,7 +1072,7 @@ int2lit (PS * ps, int l)
 static Lit **
 end_of_lits (Cls * c)
 {
-  return c->lits + c->size;
+  return (Lit**)c->lits + c->size;
 }
 
 #if !defined(NDEBUG) || defined(LOGGING)
@@ -1213,7 +1238,11 @@ init (void * pmgr,
   ps->lreduceadjustcnt = ps->lreduceadjustinc = 100;
   ps->lpropagations = ~0ull;
 
+#ifndef RCODE
   ps->out = stdout;
+#else
+  ps->out = 0;
+#endif
   new_prefix (ps, "c ");
   ps->verbosity = 0;
   ps->plain = 0;
@@ -1420,7 +1449,7 @@ static void
 resetadoconflict (PS * ps)
 {
   assert (ps->adoconflict);
-  delete_clause (ps->adoconflict);
+  delete_clause (ps, ps->adoconflict);
   ps->adoconflict = 0;
 }
 
@@ -2638,7 +2667,7 @@ add_ado (PS * ps)
     ENLARGE (ps->ados, ps->hados, ps->eados);
 
   NEWN (ado, len + 1);
-  *hados++ = ado;
+  *ps->hados++ = ado;
 
   p = ps->added;
   q = ado;
@@ -3320,6 +3349,10 @@ report (PS * ps, int replevel, char type)
 {
   int rounds;
 
+#ifdef RCODE
+  (void) type;
+#endif
+
   if (ps->verbosity < replevel)
     return;
 
@@ -3739,7 +3772,9 @@ fanalyze (PS * ps)
   Var * v, * u;
   int next;
 
+#ifndef RCODE
   double start = picosat_time_stamp ();
+#endif
 
   assert (ps->failed_assumption);
   assert (ps->failed_assumption->val == FALSE);
@@ -4061,7 +4096,7 @@ propl (PS * ps, Lit * this)
 	}
 
       l = c->lits + 1;
-      eol = c->lits + c->size;
+      eol = (Lit**) c->lits + c->size;
       prev = this;
 
       while (++l != eol)
@@ -4121,7 +4156,7 @@ static unsigned primes[] = { 996293, 330643, 753947, 500873 };
 #define PRIMES ((sizeof primes)/sizeof *primes)
 
 static unsigned
-hash_ado (Lit ** ado, unsigned salt)
+hash_ado (PS * ps, Lit ** ado, unsigned salt)
 {
   unsigned i, res, tmp;
   Lit ** p, * lit;
@@ -4172,12 +4207,12 @@ cmp_ado (Lit ** a, Lit ** b)
 }
 
 static Lit ***
-find_ado (Lit ** ado)
+find_ado (PS * ps, Lit ** ado)
 {
   Lit *** res, ** other;
   unsigned pos, delta;
 
-  pos = hash_ado (ado, 0);
+  pos = hash_ado (ps, ado, 0);
   assert (pos < ps->szadotab);
   res = ps->adotab + pos;
 
@@ -4185,7 +4220,7 @@ find_ado (Lit ** ado)
   if (!other || !cmp_ado (other, ado))
     return res;
 
-  delta = hash_ado (ado, 1);
+  delta = hash_ado (ps, ado, 1);
   if (!(delta & 1))
     delta++;
 
@@ -4220,12 +4255,12 @@ enlarge_adotab (PS * ps)
 }
 
 static int
-propado (Var * v)
+propado (PS * ps, Var * v)
 {
   Lit ** p, ** q, *** adotabpos, **ado, * lit;
   Var * u;
 
-  if (ps->level && ps->adodisabled)
+  if (ps->LEVEL && ps->adodisabled)
     return 1;
 
   assert (!ps->conflict);
@@ -4252,7 +4287,7 @@ propado (Var * v)
   if (4 * ps->nadotab >= 3 * ps->szadotab)	/* at least 75% filled */
     enlarge_adotab (ps);
 
-  adotabpos = find_ado (v->ado);
+  adotabpos = find_ado (ps, v->ado);
   ado = *adotabpos;
 
   if (!ado)
@@ -4265,7 +4300,7 @@ propado (Var * v)
 
   assert (ado != v->ado);
 
-  ps->adoconflict = new_clause (2 * llength (ado), 1);
+  ps->adoconflict = new_clause (ps, 2 * llength (ado), 1);
   q = ps->adoconflict->lits;
 
   for (p = ado; (lit = *p); p++)
@@ -4801,17 +4836,17 @@ inc_ddrestart (PS * ps)
 
 #else
 
-static int
-luby (int i)
+static unsigned
+luby (unsigned i)
 {
-  int k;
+  unsigned k;
   for (k = 1; k < 32; k++)
-    if (i == (1 << k) - 1)
-      return 1 << (k - 1);
+    if (i == (1u << k) - 1)
+      return 1u << (k - 1);
 
   for (k = 1;; k++)
-    if ((1 << (k - 1)) <= i && i < (1 << k) - 1)
-      return luby (i - (1 << (k-1)) + 1);
+    if ((1u << (k - 1)) <= i && i < (1u << k) - 1)
+      return luby (i - (1u << (k-1)) + 1);
 }
 
 #endif
@@ -5929,6 +5964,11 @@ SATISFIED:
       if (l >= 0 && count >= l)		/* decision limit reached ? */
 	return PICOSAT_UNKNOWN;
 
+      if (ps->interrupt.function &&		/* external interrupt */
+	  count > 0 && !(count % INTERRUPTLIM) &&
+	  ps->interrupt.function (ps->interrupt.state))
+	return PICOSAT_UNKNOWN;
+
       if (ps->propagations >= ps->lpropagations)/* propagation limit reached ? */
 	return PICOSAT_UNKNOWN;
 
@@ -6884,8 +6924,8 @@ picosat_add_ado_lit (PS * ps, int external_lit)
   if (external_lit)
     {
       ps->addingtoado = 1;
-      internal_lit = import_lit (external_lit, 1);
-      add_lit (internal_lit);
+      internal_lit = import_lit (ps, external_lit, 1);
+      add_lit (ps, internal_lit);
     }
   else
     {
@@ -6925,6 +6965,7 @@ assume_contexts (PS * ps)
     assume (ps, *p);
 }
 
+#ifndef RCODE
 static const char * enumstr (int i) {
   int last = i % 10;
   if (last == 1) return "st";
@@ -6932,6 +6973,7 @@ static const char * enumstr (int i) {
   if (last == 3) return "rd";
   return "th";
 }
+#endif
 
 static int
 tderef (PS * ps, int int_lit)
@@ -7335,13 +7377,16 @@ picosat_failed_assumptions (PS * ps)
 const int *
 picosat_mus_assumptions (PS * ps, void * s, void (*cb)(void*,const int*), int fix)
 {
-  int i, j, ilit, len, norig = ps->alshead - ps->als, nwork, * work, res;
+  int i, j, ilit, len, nwork, * work, res;
   signed char * redundant;
   Lit ** p, * lit;
   int failed;
   Var * v;
 #ifndef NDEBUG
   int oldlen;
+#endif
+#ifndef RCODE
+  int norig = ps->alshead - ps->als; 
 #endif
 
   check_ready (ps);
@@ -7949,7 +7994,9 @@ picosat_added_original_clauses (PS * ps)
 void
 picosat_stats (PS * ps)
 {
+#ifndef RCODE
   unsigned redlits;
+#endif
 #ifdef STATS
   check_ready (ps);
   assert (ps->sdecisions + ps->rdecisions + ps->assumptions == ps->decisions);
@@ -8014,7 +8061,9 @@ picosat_stats (PS * ps)
 #endif
    fprintf (ps->out, "%s%u fixed variables\n", ps->prefix, ps->fixed);
   assert (ps->nonminimizedllits >= ps->minimizedllits);
+#ifndef RCODE
   redlits = ps->nonminimizedllits - ps->minimizedllits;
+#endif
    fprintf (ps->out, "%s%u learned literals\n", ps->prefix, ps->llitsadded);
    fprintf (ps->out, "%s%.1f%% deleted literals\n",
      ps->prefix, PERCENT (redlits, ps->nonminimizedllits));
@@ -8390,7 +8439,7 @@ picosat_enable_ado (PS * ps)
 }
 
 void
-picosat_set_ado_conflict_limit (unsigned newadoconflictlimit)
+picosat_set_ado_conflict_limit (PS * ps, unsigned newadoconflictlimit)
 {
   check_ready (ps);
   ps->adoconflictlimit = newadoconflictlimit;
@@ -8423,6 +8472,14 @@ picosat_save_original_clauses (PS * ps)
   if (ps->saveorig) return;
   ABORTIF (ps->oadded, "API usage: 'picosat_save_original_clauses' too late");
   ps->saveorig = 1;
+}
+
+void picosat_set_interrupt (PicoSAT * ps,
+                            void * external_state,
+			    int (*interrupted)(void * external_state)) 
+{
+  ps->interrupt.state = external_state;
+  ps->interrupt.function = interrupted;
 }
 
 int
