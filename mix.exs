@@ -4,7 +4,7 @@ defmodule Picosat.MixProject do
   def project do
     [
       app: :picosat_elixir,
-      version: "0.1.2",
+      version: "0.1.3",
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -20,7 +20,18 @@ defmodule Picosat.MixProject do
 
   defp package do
     [
-      files: ["lib", "src", "c_src", "priv", "mix.exs", "Makefile", "README.md", "LICENSE.md"],
+      files: [
+        "lib", 
+        "src", 
+        "c_src/picosat.h", 
+        "c_src/picosat.c", 
+        "c_src/picosat_nif.c", 
+        "priv/.gitkeep", 
+        "mix.exs", 
+        "Makefile", 
+        "README.md", 
+        "LICENSE.md"
+      ],
       maintainers: ["Paul Schoenfelder"],
       licenses: ["Apache2.0"],
       links: %{
