@@ -10,4 +10,4 @@ init() ->
 
 
 solve(_) ->
-    exit(unable_to_load_picosat_nif).
+    :erlang.nif_error(:not_loaded)
