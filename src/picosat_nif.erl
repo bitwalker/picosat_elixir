@@ -10,4 +10,4 @@ init() ->
 
 
 solve(_) ->
-    :erlang.nif_error(:not_loaded)
+    erlang:nif_error(not_loaded)
