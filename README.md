@@ -65,6 +65,14 @@ def deps do
 end
 ```
 
+## Building on Windows
+
+Building on windows requires the Microsoft build tools (for C++/C) and `mix deps.compile` being run in a shell where the environment is set up correctly. This can be done by running the `vcvarsall.bat` script provided by the framework. The quickest way to get that is to paste this (replace the visual studio install path accordingly) into the `run` dialog (Win+R).
+
+```bat
+cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+```
+
 ## License
 
 Apache 2.0, see `LICENSE.md`
