@@ -36,7 +36,6 @@ $(C_OUTPUT):
 !ELSE
 $(C_OUTPUT): $(C_OUT_DIR)\Makefile.win.auto
 	$(NMAKE) /F Makefile.win $(C_OUTPUT)
-	powershell -command "Start-Sleep -s 5"
 !ENDIF
 
 .PHONY: all clean
