@@ -1,0 +1,42 @@
+!IF [where /R priv /Q Makefile.win.auto]
+# The file doesn't exist, so don't include it.
+!ELSE
+!INCLUDE priv\Makefile.win.auto
+!IF [del /Q /F priv\Makefile.win.auto] == 0
+!ENDIF
+!ENDIF
+
+C_SRC_DIR = c_src
+C_OUT_DIR = priv
+C_OUT_NAME = picosat_nif.dll
+C_OUTPUT = $(C_OUT_DIR)\$(C_OUT_NAME)
+
+NMAKE = nmake /$(MAKEFLAGS)
+# CFLAGS = -std=c99 -finline-functions -Wall  -fPIC
+# C99 not available in vs...
+CFLAGS = /std:c11 /DNGETRUSAGE=1 /Ob2 /Wall /I"$(C_SRC_DIR)"
+# LDFLAGS = -flat_namespace -undefined suppress -shared
+LDFLAGS = 
+
+all: $(C_OUTPUT)
+
+clean:
+	del /Q /F $(C_OUT_DIR)\*.auto
+	del /Q /F $(C_OUT_DIR)\*.dll
+	del /Q /F *.obj
+
+
+$(C_OUT_DIR)\Makefile.win.auto:
+	erl -noshell -s init stop -eval "io:setopts(standard_io, [{encoding, unicode}]), io:format(\"ERTS_INCLUDE_PATH=~ts/erts-~ts/include/\", [code:root_dir(), erlang:system_info(version)])." > $@
+
+!IFDEF ERTS_INCLUDE_PATH
+$(C_OUTPUT):
+	if NOT EXIST "$(C_OUT_DIR)" mkdir "$(C_OUT_DIR)"
+	$(CC) $(CFLAGS) $(LDFLAGS) /I"$(ERTS_INCLUDE_PATH)" /LD /MD /Fe$@ $(C_SRC_DIR)\*.c
+!ELSE
+$(C_OUTPUT): $(C_OUT_DIR)\Makefile.win.auto
+	$(NMAKE) /F Makefile.win $(C_OUTPUT)
+	powershell -command "Start-Sleep -s 5"
+!ENDIF
+
+.PHONY: all clean

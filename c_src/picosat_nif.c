@@ -1,10 +1,8 @@
-#include <unistd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <errno.h>
-#include <sys/wait.h>
+#include <string.h>
 
 #include "erl_nif.h"
 
@@ -46,14 +44,16 @@ static ERL_NIF_TERM solve_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
     return enif_make_atom(env, "unknown");
   } else if (res == PICOSAT_SATISFIABLE) {
     unsigned int vars = picosat_variables(sat);
-    ERL_NIF_TERM solution[vars];
+    ERL_NIF_TERM *solution = malloc(vars * sizeof(ERL_NIF_TERM));
+
     for(int i=1;i<=vars;i++) {
       solution[i-1] = enif_make_int(env, i * picosat_deref(sat, i));
     }
 
     picosat_reset(sat);
-
-    return enif_make_list_from_array(env, solution, vars);
+    ERL_NIF_TERM ret = enif_make_list_from_array(env, solution, vars);
+    free(solution);
+    return ret;
   } else {
     picosat_reset(sat);
     return enif_make_atom(env, "picosat_error");

@@ -9,7 +9,6 @@ defmodule Picosat.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       compilers: [:elixir_make | Mix.compilers()],
-      make_makefile: "Makefile",
       make_clean: ["clean"],
       elixirc_paths: elixirc_paths(Mix.env()),
       preferred_cli_env: preferred_cli_env(),
@@ -28,7 +27,7 @@ defmodule Picosat.MixProject do
         "c_src/picosat_nif.c", 
         "priv/.gitkeep", 
         "mix.exs", 
-        "Makefile", 
+        "Makefile*", 
         "README.md", 
         "LICENSE.md"
       ],
@@ -51,7 +50,7 @@ defmodule Picosat.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.4", runtime: false},
+      {:elixir_make, "~> 0.6", runtime: false},
       {:ex_doc, ">= 0.0.0", only: [:docs]},
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
