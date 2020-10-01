@@ -45,9 +45,11 @@ either restaurant `1`, or `2`, but not `3`.
 
 Let's see what happens:
 
-    iex> votes = [ [1, 2, -3], [2, 3], [-2], [-1, 3] ]
-    ...> Picosat.solve(votes)
-    {:ok, [1, -2, 3]}
+```elixir
+iex> votes = [ [1, 2, -3], [2, 3], [-2], [-1, 3] ]
+...> Picosat.solve(votes)
+{:ok, [1, -2, 3]}
+```
 
 Nice! We have a solution, this tells us that choosing either restaurant `1` or `3` and not `2` will satisfy everyone.
 
