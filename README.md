@@ -75,6 +75,8 @@ Building on windows requires the Microsoft build tools (for C++/C) and `mix deps
 cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 ```
 
+Currently `mix compile` only succeeds on the 2nd run. That means `mix deps.compile` has to be run twice.
+
 ## License
 
 Apache 2.0, see `LICENSE.md`
