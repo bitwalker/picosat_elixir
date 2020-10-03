@@ -10,6 +10,7 @@ defmodule Picosat.MixProject do
       deps: deps(),
       compilers: [:elixir_make | Mix.compilers()],
       make_clean: ["clean"],
+      make_targets: ["all"],
       elixirc_paths: elixirc_paths(Mix.env()),
       preferred_cli_env: preferred_cli_env(),
       description: "Bindings for the PicoSAT SAT solver",
@@ -27,7 +28,8 @@ defmodule Picosat.MixProject do
         "c_src/picosat_nif.c", 
         "priv/.gitkeep", 
         "mix.exs", 
-        "Makefile*", 
+        "Makefile", 
+        "Makefile.win", 
         "README.md", 
         "LICENSE.md"
       ],
