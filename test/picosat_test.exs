@@ -37,7 +37,8 @@ defmodule PicosatTest do
   test "list_large" do
     check = fn num ->
       assert {:ok, r} = Picosat.solve((for n <- 1 .. (num - 1), do: [-n]) ++ [[num]])
-      assert num = Enum.find(r, &(&1 == num))
+      num = Enum.find(r, &(&1 == num))
+      assert num
     end
     check.(49)
     check.(123)
@@ -50,7 +51,8 @@ defmodule PicosatTest do
   test "sparse_list_large" do
     check = fn num ->
       assert {:ok, r} = Picosat.solve([[1], [num]])
-      assert num = Enum.find(r, &(&1 == num))
+      num = Enum.find(r, &(&1 == num))
+      assert num
     end
     check.(50)
     check.(5_000)
