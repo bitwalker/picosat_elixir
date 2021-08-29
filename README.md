@@ -45,9 +45,11 @@ either restaurant `1`, or `2`, but not `3`.
 
 Let's see what happens:
 
-    iex> votes = [ [1, 2, -3], [2, 3], [-2], [-1, 3] ]
-    ...> Picosat.solve(votes)
-    {:ok, [1, -2, 3]}
+```elixir
+iex> votes = [ [1, 2, -3], [2, 3], [-2], [-1, 3] ]
+...> Picosat.solve(votes)
+{:ok, [1, -2, 3]}
+```
 
 Nice! We have a solution, this tells us that choosing either restaurant `1` or `3` and not `2` will satisfy everyone.
 
@@ -63,6 +65,14 @@ def deps do
     {:picosat_elixir, "~> 0.2.0"}
   ]
 end
+```
+
+## Building on Windows
+
+Building on windows requires the Microsoft build tools (for C++/C) and `mix deps.compile` being run in a shell where the environment is set up correctly. This can be done by running the `vcvarsall.bat` script provided by the framework. The quickest way to get that is to paste this (replace the visual studio installation path accordingly) into the `run` dialog (<kbd>Win</kbd>+<kbd>R</kbd>).
+
+```bat
+cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 ```
 
 ## License
