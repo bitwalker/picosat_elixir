@@ -1,9 +1,12 @@
 CWD := $(shell pwd)
 
 ERTS_INCLUDE_DIR ?= $(shell erl -noshell -eval "io:format(\"~s/erts-~s/include/\", [code:root_dir(), erlang:system_info(version)])." -s erlang halt)
+MIX_BUILD_PATH ?= $(CWD)/priv
 
 C_SRC_DIR = $(CWD)/c_src
-C_SRC_OUTPUT = $(CWD)/priv/picosat_nif.so
+PICOSAT_BUILD_DIR = $(CWD)/priv
+PICOSAT_BUILD_OUTPUT_DIR = $(MIX_BUILD_PATH)/lib/picosat_elixir/priv
+PICOSAT_BUILD_OUTPUT = $(PICOSAT_BUILD_OUTPUT_DIR)/picosat_nif.so
 
 UNAME_SYS := $(shell uname -s)
 ifeq ($(UNAME_SYS), Darwin)
@@ -29,20 +32,23 @@ endif
 CFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR)
 LDFLAGS += -shared
 
-all: $(C_SRC_OUTPUT)
+all: $(PICOSAT_BUILD_OUTPUT)
 
 clean:
-	rm -f $(C_SRC_OUTPUT)
-	rm -f $(C_SRC_DIR)/*.o
+	rm -f $(PICOSAT_BUILD_OUTPUT)
+	rm -f $(PICOSAT_BUILD_DIR)/*.o
 
 analyze:
 	clang --analyze $(CFLAGS) $(C_SRC_DIR)/*.{c,h}
 
-$(C_SRC_OUTPUT): $(C_SRC_DIR)/picosat.o $(C_SRC_DIR)/picosat_nif.o
-	@mkdir -p $(CWD)/priv
-	$(CC) $(LDFLAGS) $(LDLIBS) $(C_SRC_DIR)/picosat_nif.o $(C_SRC_DIR)/picosat.o -o $(C_SRC_OUTPUT)
+$(PICOSAT_BUILD_OUTPUT): $(PICOSAT_BUILD_DIR)/picosat.o $(PICOSAT_BUILD_DIR)/picosat_nif.o
+	@mkdir -p $(PICOSAT_BUILD_OUTPUT_DIR)/priv
+	$(CC) $(LDFLAGS) $(LDLIBS) $(PICOSAT_BUILD_DIR)/picosat_nif.o $(PICOSAT_BUILD_DIR)/picosat.o -o $(PICOSAT_BUILD_OUTPUT)
 
-$(C_SRC_DIR)/picosat.o: $(C_SRC_DIR)/picosat.c $(C_SRC_DIR)/picosat.h
-	$(CC) $(CFLAGS) -o $(C_SRC_DIR)/picosat.o -c $<
+$(PICOSAT_BUILD_DIR)/picosat.o: $(C_SRC_DIR)/picosat.c $(C_SRC_DIR)/picosat.h
+	$(CC) $(CFLAGS) -o $(PICOSAT_BUILD_DIR)/picosat.o -c $<
+
+$(PICOSAT_BUILD_DIR)/picosat_nif.o: $(C_SRC_DIR)/picosat_nif.c
+	$(CC) $(CFLAGS) -o $(PICOSAT_BUILD_DIR)/picosat_nif.o -c $<
 
 .PHONY: all clean

@@ -25,4 +25,4 @@ picosat-*.tar
 mix.lock
 
 priv/*.so
-c_src/*.o
+priv/*.o
