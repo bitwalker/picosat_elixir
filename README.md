@@ -60,7 +60,7 @@ PicoSAT can be installed by adding `picosat_elixir` to your list of dependencies
 ```elixir
 def deps do
   [
-    {:picosat_elixir, "~> 0.1.0"}
+    {:picosat_elixir, "~> 0.2.0"}
   ]
 end
 ```
