@@ -43,7 +43,9 @@ So each person gives their votes to a neutral third party (the solver), and thei
 or against, one or more restaurants. Given a vote of `[1, 2, -3]`, this is saying that the person is fine with
 either restaurant `1`, or `2`, but not `3`.
 
-Let's see what happens:
+Let's see what happens for the following votes:
+
+(x₁ ∨ x₂ ∨ ¬x₃) ∧ (x₂ ∨ x₃) ∧ (¬x₂) ∧ (¬x₁ ∨ x₃) 
 
 ```elixir
 iex> votes = [ [1, 2, -3], [2, 3], [-2], [-1, 3] ]
@@ -51,7 +53,7 @@ iex> votes = [ [1, 2, -3], [2, 3], [-2], [-1, 3] ]
 {:ok, [1, -2, 3]}
 ```
 
-Nice! We have a solution, this tells us that choosing either restaurant `1` or `3` and not `2` will satisfy everyone.
+Nice! We have a solution, this tells us that visiting restaurant `1` and `3` but not `2` will satisfy everyone.
 
 Happy solving!
 
