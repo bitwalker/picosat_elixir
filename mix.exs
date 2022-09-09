@@ -34,7 +34,7 @@ defmodule Picosat.MixProject do
         "LICENSE.md"
       ],
       maintainers: ["Paul Schoenfelder"],
-      licenses: ["Apache2.0"],
+      licenses: ["Apache-2.0"],
       links: %{
         "GitHub": "https://github.com/bitwalker/picosat_elixir",
         "Issues": "https://github.com/bitwalker/picosat_elixir/issues",
