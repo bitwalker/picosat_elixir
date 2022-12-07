@@ -10,12 +10,12 @@ PICOSAT_BUILD_OUTPUT = $(PICOSAT_BUILD_OUTPUT_DIR)/picosat_nif.so
 
 UNAME_SYS := $(shell uname -s)
 ifeq ($(UNAME_SYS), Darwin)
-	CFLAGS ?= -std=c99 -finline-functions -Wall
-	LDFLAGS ?= -flat_namespace -undefined suppress
+	CFLAGS := -std=c99 -finline-functions -Wall
+	LDFLAGS := -flat_namespace -undefined suppress
 else ifeq ($(UNAME_SYS), FreeBSD)
-	CFLAGS ?= -std=c99 -finline-functions -Wall
+	CFLAGS := -std=c99 -finline-functions -Wall
 else ifeq ($(UNAME_SYS), Linux)
-	CFLAGS ?= -std=c99 -finline-functions -Wall
+	CFLAGS := -std=c99 -finline-functions -Wall
 endif
 
 MIX_ENV ?= dev
