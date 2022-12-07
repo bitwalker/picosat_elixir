@@ -23,3 +23,13 @@ jobs:
       - run: mix deps.get
       - run: mix test
 
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: brew install erlang elixir
+      - run: mix local.hex --force --if-missing
+      - run: mix local.rebar --force --if-missing
+      - run: mix deps.get
+      - run: mix test
+
