@@ -77,6 +77,18 @@ Building on windows requires the Microsoft build tools (for C++/C) and `mix deps
 cmd /K "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 ```
 
+## Building on Alpine Linux
+
+Building on Alpine Linux requires `build-base` and for `unistd.h` to be
+available at `/usr/include/sys/`:
+
+```sh
+apk add build-base
+
+RUN mkdir -p /usr/include/sys
+RUN ln -s /usr/include/unistd.h /usr/include/sys/unistd.h
+```
+
 ## License
 
 Apache 2.0, see `LICENSE.md`
